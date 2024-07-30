@@ -14,9 +14,9 @@ spec:
             - containerPort: 6443
           env:
             - name: KUBERNETES_MASTER
-              value: https://10.20.187.55:6443
+              value: https://10.20.180.173:6443
             - name: KUBERNETES_SERVICE_HOST
-              value: 10.20.187.55
+              value: 10.20.180.173
             - name: KUBERNETES_SERVICE_PORT
               value: "6443"
  
