@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kserve-controller-manager
+  namespace: kserve
+spec:
+  template:
+    spec:
+      containers:
+        - name: manager
+          command:
+          image: quay.io/opendatahub/kserve-controller:v0.12.1.1
+          ports:
+            - containerPort: 6443
+          env:
+            - name: KUBERNETES_MASTER
+              value: https://10.20.187.55:6443
+            - name: KUBERNETES_SERVICE_HOST
+              value: 10.20.187.55
+            - name: KUBERNETES_SERVICE_PORT
+              value: "6443"
+ 
