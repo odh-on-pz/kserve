@@ -14,26 +14,32 @@ ARG CARGO_HOME=/opt/.cargo/
 RUN microdnf install -y python39 python39-devel gcc libffi-devel openssl-devel krb5-libs && \
     if [ "$(uname -m)" = "ppc64le" ]; then \
        echo "Installing packages and rust " && \
-       microdnf install -y libopenblas-devel gcc-c++ make krb5-workstation curl libhdf5-devel cmake gfortran && \
+       microdnf install -y openblas* gcc-c++ make krb5-workstation libcurl wget cmake libgfortran && \
+       wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+       rpm --import http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 && \
+       rpm -ivh ./epel-release-latest-8.noarch.rpm && \
+       microdnf install -y hdf5-devel && \ 
        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > sh.rustup.rs && \
        export CARGO_HOME=${CARGO_HOME} && sh ./sh.rustup.rs -y && export PATH=$PATH:${CARGO_HOME}/bin && . "${CARGO_HOME}/env"; \
     fi && \
     microdnf clean all
 
 ENV PATH="$PATH:${POETRY_HOME}/bin:${CARGO_HOME}/bin"
+RUN python3 -m venv ${POETRY_HOME} && ${POETRY_HOME}/bin/pip3 install poetry==${POETRY_VERSION}
 
 # Activate virtual env
 ARG VENV_PATH
 ENV VIRTUAL_ENV=${VENV_PATH}
-RUN python -m venv $VIRTUAL_ENV
+RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY kserve/pyproject.toml kserve/poetry.lock kserve/
 RUN cd kserve && \
     if [[ $(uname -m) = "ppc64le" ]]; then \
-      export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=true \
-    fi; \
+      export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=true; \
+    fi && \
     poetry install --no-root --no-interaction --no-cache --extras "storage"
+
 COPY kserve kserve
 RUN cd kserve && poetry install --no-interaction --no-cache --extras "storage"
 
