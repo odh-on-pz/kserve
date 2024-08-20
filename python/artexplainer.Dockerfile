@@ -7,13 +7,20 @@ FROM ${BASE_IMAGE} as builder
 # Install Poetry
 ARG POETRY_HOME=/opt/poetry
 ARG POETRY_VERSION=1.7.1
+ARG CARGO_HOME=/opt/.cargo/
 
 # Required for building packages for arm64 arch
-RUN apt-get update && apt-get install -y --no-install-recommends python3-dev build-essential && apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends python3-dev build-essential && \
+    if [ "$(uname -m)" = "ppc64le" ]; then \
+       echo "Installing rust " && \
+       apt-get install -y libopenblas-dev gcc-c++ make krb5-workstation pkg-config libhdf5-dev curl cmake gfortran && \
+       curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > sh.rustup.rs && \
+       export CARGO_HOME=${CARGO_HOME} && sh ./sh.rustup.rs -y && export PATH=$PATH:${CARGO_HOME}/bin && . "${CARGO_HOME}/env"; \
+    fi && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
+ENV PATH="$PATH:${POETRY_HOME}/bin:${CARGO_HOME}/bin"
 RUN python3 -m venv ${POETRY_HOME} && ${POETRY_HOME}/bin/pip install poetry==${POETRY_VERSION}
-ENV PATH="$PATH:${POETRY_HOME}/bin"
 
 # Activate virtual env
 ARG VENV_PATH
@@ -22,7 +29,12 @@ RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY kserve/pyproject.toml kserve/poetry.lock kserve/
-RUN cd kserve && poetry install --no-root --no-interaction --no-cache
+RUN cd kserve && \
+    if [[ $(uname -m) = "ppc64le" ]]; then \
+       export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=true; \
+    fi && \
+    poetry install --no-root --no-interaction --no-cache
+
 COPY kserve kserve
 RUN cd kserve && poetry install --no-interaction --no-cache
 
