@@ -54,6 +54,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        run: |
+          whoami
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
