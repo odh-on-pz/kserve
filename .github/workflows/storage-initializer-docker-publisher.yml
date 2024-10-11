@@ -43,7 +43,7 @@ jobs:
           platforms: linux/amd64, linux/arm64/v8
           context: python
           file: python/storage-initializer.Dockerfile
-          tags: ${{ platforms }}
+          tags: latest-nonppc
           push: false
           # https://github.com/docker/buildx/issues/1533
           provenance: false
