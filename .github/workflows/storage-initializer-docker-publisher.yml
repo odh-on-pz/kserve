@@ -23,8 +23,8 @@ concurrency:
 jobs:
   # Run tests.
   # See also https://docs.docker.com/docker-hub/builds/automated-testing/
-  jobs:
-  build-amd64:
+
+build-amd64:
     runs-on: [self-hosted]
 
     steps:
@@ -46,7 +46,7 @@ jobs:
           platforms: linux/amd64
           tags: kserve/${{ env.IMAGE_NAME }}:latest-amd64
 
-  build-arm64:
+build-arm64:
     runs-on: [self-hosted]
 
     steps:
@@ -90,7 +90,7 @@ jobs:
           platforms: linux/ppc64le
           tags: kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
 
-  create-manifest:
+create-manifest:
     runs-on: [self-hosted]
     needs: [build-amd64, build-arm64, build-ppc64le]
 
@@ -110,7 +110,7 @@ jobs:
         run: |
           docker manifest inspect kserve/${{ env.IMAGE_NAME }}:latest
 
-  push:
+push:
     needs: [create-manifest]
     runs-on: [self-hosted]
     if: github.event_name == 'push'
