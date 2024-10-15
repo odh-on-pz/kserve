@@ -45,6 +45,7 @@ jobs:
           push: false
           platforms: linux/amd64
           tags: kserve/${{ env.IMAGE_NAME }}:latest-amd64
+          load: true
           
       - name: List all Docker images
         run: |
@@ -99,6 +100,7 @@ jobs:
           push: false
           platforms: linux/ppc64le
           tags: kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
+          load: true
 
       - name: List all Docker images
         run: |
