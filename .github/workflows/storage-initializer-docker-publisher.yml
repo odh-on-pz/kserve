@@ -71,8 +71,9 @@ jobs:
           push: false
           platforms: linux/arm64
           tags: kserve/${{ env.IMAGE_NAME }}:latest-arm64
+          load: true
 
-      - name: List all Docker images
+      - name: Verify image
         run: |
          docker images
 
