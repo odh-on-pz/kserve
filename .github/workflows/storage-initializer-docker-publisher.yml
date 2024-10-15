@@ -4,8 +4,7 @@ on:
   push:
     # Publish `master` as Docker `latest` image.
     branches:
-      - master
-      - storage-int-ppc64le
+      - manifest-ppc64le
 
     # Publish `v1.2.3` tags as releases.
     tags:
@@ -24,8 +23,9 @@ concurrency:
 jobs:
   # Run tests.
   # See also https://docs.docker.com/docker-hub/builds/automated-testing/
-  test:
-    runs-on: ubuntu-latest
+  jobs:
+  build-amd64:
+    runs-on: [self-hosted]
 
     steps:
       - name: Checkout source
@@ -37,16 +37,36 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Run tests
+      - name: Build amd64 image
         uses: docker/build-push-action@v5
         with:
-          platforms: linux/amd64, linux/arm64/v8
           context: python
           file: python/storage-initializer.Dockerfile
-          tags: latest-nonppc
           push: false
-          # https://github.com/docker/buildx/issues/1533
-          provenance: false
+          platforms: linux/amd64
+          tags: kserve/${{ env.IMAGE_NAME }}:latest-amd64
+
+  build-arm64:
+    runs-on: [self-hosted]
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build arm64 image
+        uses: docker/build-push-action@v5
+        with:
+          context: python
+          file: python/storage-initializer.Dockerfile
+          push: false
+          platforms: linux/arm64
+          tags: kserve/${{ env.IMAGE_NAME }}:latest-arm64
 
   build-ppc64le:
     runs-on: [self-hosted]
@@ -55,44 +75,44 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Know yourself
-        run: |
-          whoami
-
-      - name: Set up QEMU
+      - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Context for Buildx
-        id: buildx-context
-        run: |
-          docker context create builders
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          version: latest
-          endpoint: builders
 
-      - name: Build and push
+      - name: Build ppc64le image
         uses: docker/build-push-action@v5
         with:
           context: python
           file: python/storage-initializer.Dockerfile
           push: false
-          # https://github.com/docker/buildx/issues/1533
-          provenance: false
           platforms: linux/ppc64le
-          tags: |
-            my-registry/my-repo:latest-ppc64le
+          tags: kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
 
+  create-manifest:
+    runs-on: [self-hosted]
+    needs: [build-amd64, build-arm64, build-ppc64le]
 
-  # Push image to GitHub Packages.
-  # See also https://docs.docker.com/docker-hub/builds/
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Manifest
+        run: |
+          docker manifest create \
+            kserve/${{ env.IMAGE_NAME }}:latest \
+            kserve/${{ env.IMAGE_NAME }}:latest-amd64 \
+            kserve/${{ env.IMAGE_NAME }}:latest-arm64 \
+            kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
+
+      - name: Verify Docker Manifest
+        run: |
+          docker manifest inspect kserve/${{ env.IMAGE_NAME }}:latest
+
   push:
-    # Ensure test job passes before pushing image.
-    needs: [test, build-ppc64le]
-
-    runs-on: ubuntu-latest
+    needs: [create-manifest]
+    runs-on: [self-hosted]
     if: github.event_name == 'push'
 
     steps:
@@ -136,7 +156,7 @@ jobs:
           platforms: linux/amd64, linux/arm64/v8
           context: python
           file: python/storage-initializer.Dockerfile
-          push: true
+          push: false  # Do not push the image
           tags: ${{ env.IMAGE_ID }}:${{ env.VERSION }}
           # https://github.com/docker/buildx/issues/1533
           provenance: false
