@@ -4,7 +4,7 @@ on:
   push:
     # Publish `master` as Docker `latest` image.
     branches:
-      - manifest-ppc64le
+      - manifest-ppc64le-test
 
     # Publish `v1.2.3` tags as releases.
     tags:
@@ -15,7 +15,7 @@ on:
 
 env:
   IMAGE_NAME: storage-initializer
-  REGISTRY: kserve
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -44,7 +44,11 @@ jobs:
           file: python/storage-initializer.Dockerfile
           push: false
           platforms: linux/amd64
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64
+          tags: kserve/${{ env.IMAGE_NAME }}:latest-amd64
+          
+      - name: List all Docker images
+        run: |
+         docker images
 
   build-arm64:
     runs-on: ubuntu-latest
@@ -66,8 +70,13 @@ jobs:
           file: python/storage-initializer.Dockerfile
           push: false
           platforms: linux/arm64
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64
+          tags: kserve/${{ env.IMAGE_NAME }}:latest-arm64
 
+      - name: List all Docker images
+        run: |
+         docker images
+
+    
   build-ppc64le:
     runs-on: [self-hosted]
 
@@ -88,7 +97,12 @@ jobs:
           file: python/storage-initializer.Dockerfile
           push: false
           platforms: linux/ppc64le
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-ppc64le
+          tags: kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
+
+      - name: List all Docker images
+        run: |
+         docker images
+
 
   create-manifest:
     runs-on: ubuntu-latest
@@ -98,23 +112,17 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Create SHA manifest
+      - name: Setup Docker Manifest
         run: |
-          echo "Creating SHA manifest..."
           docker manifest create \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64 \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64 \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-ppc64le
+            kserve/${{ env.IMAGE_NAME }}:latest \
+            kserve/${{ env.IMAGE_NAME }}:latest-amd64 \
+            kserve/${{ env.IMAGE_NAME }}:latest-arm64 \
+            kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
 
-      - name: Create latest manifest
+      - name: Verify Docker Manifest
         run: |
-          echo "Creating latest manifest..."
-          docker manifest create \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64 \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64 \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-ppc64le
+          docker manifest inspect kserve/${{ env.IMAGE_NAME }}:latest
 
   push:
     needs: [create-manifest]
