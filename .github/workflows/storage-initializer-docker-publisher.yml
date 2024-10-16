@@ -20,23 +20,20 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+services:
+  registry:
+    image: registry:2
+    ports:
+      - 5000:5000
+    options: >-
+      --restart=always
+
 jobs:
   # Run tests.
   # See also https://docs.docker.com/docker-hub/builds/automated-testing/
 
-  setup-local-registry:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run local docker registry
-        run: |
-          docker run -d -p 5000:5000 --restart=always --name registry registry:2
-      - name: Verify local registry
-        run: |
-          curl http://localhost:5000/v2/
-
   build-amd64:
     runs-on: ubuntu-latest
-    needs: setup-local-registry
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -62,7 +59,6 @@ jobs:
 
   build-arm64:
     runs-on: ubuntu-latest
-    needs: setup-local-registry
 
     steps:
       - name: Checkout source
@@ -89,7 +85,6 @@ jobs:
 
   build-ppc64le:
     runs-on: [self-hosted]
-    needs: setup-local-registry
 
     steps:
       - name: Checkout source
