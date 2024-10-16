@@ -15,7 +15,7 @@ on:
 
 env:
   IMAGE_NAME: storage-initializer
-
+  LOCAL_REGISTRY: localhost:5000
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -24,9 +24,19 @@ jobs:
   # Run tests.
   # See also https://docs.docker.com/docker-hub/builds/automated-testing/
 
+  setup-local-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run local docker registry
+        run: |
+          docker run -d -p 5000:5000 --restart=always --name registry registry:2
+      - name: Verify local registry
+        run: |
+          curl http://localhost:5000/v2/
+
   build-amd64:
     runs-on: ubuntu-latest
-
+    needs: setup-local-registry
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -37,22 +47,22 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build amd64 image
+      - name: Build and push amd64 image to local registry
         uses: docker/build-push-action@v5
         with:
           context: python
           file: python/storage-initializer.Dockerfile
-          push: false
+          push: true
           platforms: linux/amd64
-          tags: kserve/${{ env.IMAGE_NAME }}:latest-amd64
-          load: true
-          
-      - name: List all Docker images
+          tags: ${{ env.LOCAL_REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64
+
+      - name: Verify amd64 image in local registry
         run: |
-         docker images
+          curl --silent -f http://${{ env.LOCAL_REGISTRY }}/v2/_catalog
 
   build-arm64:
     runs-on: ubuntu-latest
+    needs: setup-local-registry
 
     steps:
       - name: Checkout source
@@ -64,23 +74,22 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build arm64 image
+      - name: Build and push arm64 image to local registry
         uses: docker/build-push-action@v5
         with:
           context: python
           file: python/storage-initializer.Dockerfile
-          push: false
+          push: true
           platforms: linux/arm64
-          tags: kserve/${{ env.IMAGE_NAME }}:latest-arm64
-          load: true
+          tags: ${{ env.LOCAL_REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64
 
-      - name: Verify image
+      - name: Verify arm64 image in local registry
         run: |
-         docker images
+          curl --silent -f http://${{ env.LOCAL_REGISTRY }}/v2/_catalog
 
-    
   build-ppc64le:
     runs-on: [self-hosted]
+    needs: setup-local-registry
 
     steps:
       - name: Checkout source
@@ -97,15 +106,13 @@ jobs:
         with:
           context: python
           file: python/storage-initializer.Dockerfile
-          push: false
+          push: true
           platforms: linux/ppc64le
-          tags: kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
-          load: true
+          tags: ${{ env.LOCAL_REGISTRY }}/${{ env.IMAGE_NAME }}:latest-ppc64le
 
-      - name: List all Docker images
+      - name: Verify ppc64le image in local registry
         run: |
-         docker images
-
+          curl --silent -f http://${{ env.LOCAL_REGISTRY }}/v2/_catalog
 
   create-manifest:
     runs-on: ubuntu-latest
@@ -115,17 +122,17 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup Docker Manifest
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create Docker manifest from local registry images
         run: |
           docker manifest create \
-            kserve/${{ env.IMAGE_NAME }}:latest \
-            kserve/${{ env.IMAGE_NAME }}:latest-amd64 \
-            kserve/${{ env.IMAGE_NAME }}:latest-arm64 \
-            kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
+            ${{ env.LOCAL_REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            ${{ env.LOCAL_REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64 \
+            ${{ env.LOCAL_REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64 \
+            ${{ env.LOCAL_REGISTRY }}/${{ env.IMAGE_NAME }}:latest-ppc64le
 
-      - name: Verify Docker Manifest
-        run: |
-          docker manifest inspect kserve/${{ env.IMAGE_NAME }}:latest
 
   push:
     needs: [create-manifest]
