@@ -1,32 +1,23 @@
-name: Storage Intializer Docker Publisher
+name: Storage Initializer Docker Publisher
 
 on:
   push:
-    # Publish `master` as Docker `latest` image.
     branches:
       - manifest-ppc64le
-
-    # Publish `v1.2.3` tags as releases.
     tags:
       - v*
-
-  # Run tests for any PRs.
   pull_request:
 
 env:
   IMAGE_NAME: storage-initializer
-  REGISTRY: kserve
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Run tests.
-  # See also https://docs.docker.com/docker-hub/builds/automated-testing/
-
   build-amd64:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -38,17 +29,20 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build amd64 image
+        id: amd64-build
         uses: docker/build-push-action@v5
         with:
           context: python
           file: python/storage-initializer.Dockerfile
           push: false
           platforms: linux/amd64
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64
+          tags: kserve/${{ env.IMAGE_NAME }}:latest-amd64
+
+      - name: Save amd64 image
+        run: docker save -o kserve-${{ env.IMAGE_NAME }}-latest-amd64.tar kserve/${{ env.IMAGE_NAME }}:latest-amd64
 
   build-arm64:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -60,17 +54,20 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build arm64 image
+        id: arm64-build
         uses: docker/build-push-action@v5
         with:
           context: python
           file: python/storage-initializer.Dockerfile
           push: false
           platforms: linux/arm64
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64
+          tags: kserve/${{ env.IMAGE_NAME }}:latest-arm64
+
+      - name: Save arm64 image
+        run: docker save -o kserve-${{ env.IMAGE_NAME }}-latest-arm64.tar kserve/${{ env.IMAGE_NAME }}:latest-arm64
 
   build-ppc64le:
     runs-on: [self-hosted]
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -82,39 +79,42 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build ppc64le image
+        id: ppc64le-build
         uses: docker/build-push-action@v5
         with:
           context: python
           file: python/storage-initializer.Dockerfile
           push: false
           platforms: linux/ppc64le
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-ppc64le
+          tags: kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
+
+      - name: Save ppc64le image
+        run: docker save -o kserve-${{ env.IMAGE_NAME }}-latest-ppc64le.tar kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
 
   create-manifest:
     runs-on: ubuntu-latest
     needs: [build-amd64, build-arm64, build-ppc64le]
-
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - name: Load amd64 image
+        run: docker load -i kserve-${{ env.IMAGE_NAME }}-latest-amd64.tar
 
-      - name: Create SHA manifest
-        run: |
-          echo "Creating SHA manifest..."
-          docker manifest create \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64 \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64 \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-ppc64le
+      - name: Load arm64 image
+        run: docker load -i kserve-${{ env.IMAGE_NAME }}-latest-arm64.tar
 
-      - name: Create latest manifest
+      - name: Load ppc64le image
+        run: docker load -i kserve-${{ env.IMAGE_NAME }}-latest-ppc64le.tar
+
+      - name: Create Docker Manifest
         run: |
-          echo "Creating latest manifest..."
           docker manifest create \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64 \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64 \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-ppc64le
+            kserve/${{ env.IMAGE_NAME }}:latest \
+            kserve/${{ env.IMAGE_NAME }}:latest-amd64 \
+            kserve/${{ env.IMAGE_NAME }}:latest-arm64 \
+            kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
+
+      - name: Verify Docker Manifest
+        run: |
+          docker manifest inspect kserve/${{ env.IMAGE_NAME }}:latest
 
   push:
     needs: [create-manifest]
@@ -162,7 +162,6 @@ jobs:
           platforms: linux/amd64, linux/arm64/v8
           context: python
           file: python/storage-initializer.Dockerfile
-          push: false  # Do not push the image
+          push: false
           tags: ${{ env.IMAGE_ID }}:${{ env.VERSION }}
-          # https://github.com/docker/buildx/issues/1533
           provenance: false
