@@ -15,7 +15,7 @@ on:
 
 env:
   IMAGE_NAME: storage-initializer
-  LOCAL_REGISTRY: localhost:5000
+  LOCAL_REGISTRY: 127.0.0.1:5000
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -30,7 +30,7 @@ jobs:
       registry:
         image: registry:2
         ports:
-         - 5000:5000
+         - 127.0.0.1:5000:5000
         options: >-
          --restart=always
     steps:
@@ -62,7 +62,7 @@ jobs:
       registry:
         image: registry:2
         ports:
-         - 5000:5000
+         - 127.0.0.1:5000:5000
         options: >-
          --restart=always
 
@@ -95,7 +95,7 @@ jobs:
       registry:
         image: registry:2
         ports:
-         - 5000:5000
+         - 127.0.0.1:5000:5000
         options: >-
          --restart=always
 
