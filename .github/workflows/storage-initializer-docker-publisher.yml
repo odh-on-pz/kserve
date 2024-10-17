@@ -36,6 +36,7 @@ jobs:
           file: python/storage-initializer.Dockerfile
           push: false
           platforms: linux/amd64
+          load: true
           tags: kserve/${{ env.IMAGE_NAME }}:latest-amd64
 
       - name: Save amd64 image
@@ -61,6 +62,7 @@ jobs:
           file: python/storage-initializer.Dockerfile
           push: false
           platforms: linux/arm64
+          load: true
           tags: kserve/${{ env.IMAGE_NAME }}:latest-arm64
 
       - name: Save arm64 image
@@ -86,6 +88,7 @@ jobs:
           file: python/storage-initializer.Dockerfile
           push: false
           platforms: linux/ppc64le
+          load: true
           tags: kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
 
       - name: Save ppc64le image
