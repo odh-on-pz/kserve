@@ -42,6 +42,13 @@ jobs:
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
+      
+      - name: Wait for registry to be ready
+        run: |
+          until curl --silent http://${{ env.LOCAL_REGISTRY }}/v2/_catalog; do
+            echo "Waiting for the local registry to be ready..."
+            sleep 5
+          done
 
       - name: Build and push amd64 image to local registry
         uses: docker/build-push-action@v5
@@ -76,6 +83,13 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Wait for registry to be ready
+        run: |
+          until curl --silent http://${{ env.LOCAL_REGISTRY }}/v2/_catalog; do
+            echo "Waiting for the local registry to be ready..."
+            sleep 5
+          done
+
       - name: Build and push arm64 image to local registry
         uses: docker/build-push-action@v5
         with:
@@ -107,6 +121,13 @@ jobs:
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Wait for registry to be ready
+        run: |
+          until curl --silent http://${{ env.LOCAL_REGISTRY }}/v2/_catalog; do
+            echo "Waiting for the local registry to be ready..."
+            sleep 5
+          done
 
       - name: Build ppc64le image
         uses: docker/build-push-action@v5
