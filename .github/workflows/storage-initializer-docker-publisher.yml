@@ -15,7 +15,7 @@ on:
 
 env:
   IMAGE_NAME: storage-initializer
-  LOCAL_REGISTRY: registry:5000
+  LOCAL_REGISTRY: localhost:5000
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
