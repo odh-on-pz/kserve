@@ -30,9 +30,10 @@ jobs:
       registry:
         image: registry:2
         ports:
-         - 127.0.0.1:5000:5000
+         - 5000:5000
         options: >-
          --restart=always
+    network_mode: host
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -62,9 +63,10 @@ jobs:
       registry:
         image: registry:2
         ports:
-         - 127.0.0.1:5000:5000
+         - 5000:5000
         options: >-
          --restart=always
+      network_mode: host
 
     steps:
       - name: Checkout source
@@ -95,9 +97,10 @@ jobs:
       registry:
         image: registry:2
         ports:
-         - 127.0.0.1:5000:5000
+         - 5000:5000
         options: >-
          --restart=always
+    network_mode: host
 
     steps:
       - name: Checkout source
