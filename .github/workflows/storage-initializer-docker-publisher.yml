@@ -42,6 +42,11 @@ jobs:
       - name: Save amd64 image
         run: docker save -o kserve-${{ env.IMAGE_NAME }}-latest-amd64.tar kserve/${{ env.IMAGE_NAME }}:latest-amd64
 
+      - name: Upload amd64 image as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: amd64-image
+          path: kserve-${{ env.IMAGE_NAME }}-latest-amd64.tar
   build-arm64:
     runs-on: ubuntu-latest
     steps:
@@ -68,6 +73,11 @@ jobs:
       - name: Save arm64 image
         run: docker save -o kserve-${{ env.IMAGE_NAME }}-latest-arm64.tar kserve/${{ env.IMAGE_NAME }}:latest-arm64
 
+      - name: Upload arm64 image as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: arm64-image
+          path: kserve-${{ env.IMAGE_NAME }}-latest-arm64.tar
   build-ppc64le:
     runs-on: [self-hosted]
     steps:
@@ -93,11 +103,34 @@ jobs:
 
       - name: Save ppc64le image
         run: docker save -o kserve-${{ env.IMAGE_NAME }}-latest-ppc64le.tar kserve/${{ env.IMAGE_NAME }}:latest-ppc64le
-
+    
+      - name: Upload ppc64le image as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ppc64le-image
+          path: kserve-${{ env.IMAGE_NAME }}-latest-ppc64le.tar
   create-manifest:
     runs-on: ubuntu-latest
     needs: [build-amd64, build-arm64, build-ppc64le]
     steps:
+      - name: Download amd64 image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: amd64-image
+          path: .
+
+      - name: Download arm64 image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: arm64-image
+          path: .
+
+      - name: Download ppc64le image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ppc64le-image
+          path: .
+
       - name: Load amd64 image
         run: docker load -i kserve-${{ env.IMAGE_NAME }}-latest-amd64.tar
 
